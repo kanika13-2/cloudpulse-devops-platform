@@ -157,28 +157,18 @@ jobs:
     needs: [build-container]
     runs-on: ubuntu-latest
     # Execute only on main push or manual trigger, AND when AWS credentials exist
-    if: |
-      github.ref == 'refs/heads/main' && 
-      (secrets.AWS_ROLE_TO_ASSUME != '' || secrets.AWS_ACCESS_KEY_ID != '')
+    # Deploy only on main when AWS OIDC role is configured
+    if: github.ref == 'refs/heads/main' && vars.AWS_ROLE_TO_ASSUME != ''
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials via OIDC (Recommended Least-Privilege)
-        if: ${{ secrets.AWS_ROLE_TO_ASSUME != '' }}
+      - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-
-      - name: Configure AWS Credentials via Access Keys (Fallback)
-        if: ${{ secrets.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon Elastic Container Registry (ECR)
         id: login-ecr
