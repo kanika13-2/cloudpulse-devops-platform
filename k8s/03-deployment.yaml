@@ -1,0 +1,107 @@
+# ==============================================================================
+# CloudPulse High-Availability Application Deployment
+# Configured with: 2 Replicas, Rolling Updates, Probes, SecurityContext, Limits
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudpulse-api
+  namespace: cloudpulse
+  labels:
+    app.kubernetes.io/name: cloudpulse-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: cloudpulse-platform
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudpulse-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cloudpulse-api
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: cloudpulse-platform
+        app.kubernetes.io/version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: cloudpulse-serviceaccount
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cloudpulse-api
+          image: cloudpulse-platform:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: cloudpulse-config
+            - secretRef:
+                name: cloudpulse-secrets
+                optional: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "384Mi"
+          # Startup Probe: allows container up to 30s to boot before liveness checks kick in
+          startupProbe:
+            httpGet:
+              path: /health?probe_type=liveness
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 10
+          # Liveness Probe: detects crashes/deadlocks and triggers pod container restart
+          livenessProbe:
+            httpGet:
+              path: /health?probe_type=liveness
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness Probe: ensures container is capable of taking user traffic
+          readinessProbe:
+            httpGet:
+              path: /health?probe_type=readiness
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              exec:
+                # Allow ingress/kube-proxy endpoints to propagate deregistration
+                command: ["/bin/sh", "-c", "sleep 5"]
+

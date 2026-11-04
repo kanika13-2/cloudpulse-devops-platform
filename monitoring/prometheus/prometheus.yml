@@ -1,0 +1,27 @@
+# ==============================================================================
+# Prometheus Configuration for CloudPulse Platform
+# ==============================================================================
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  external_labels:
+    monitor: 'cloudpulse-monitor'
+    cluster: 'cloudpulse-local'
+
+scrape_configs:
+  # Scrape CloudPulse API FastAPI Metrics
+  - job_name: 'cloudpulse-api'
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['cloudpulse-api:8000']
+        labels:
+          service: 'cloudpulse-api'
+          environment: 'containerized'
+          tier: 'application'
+
+  # Self-monitoring for Prometheus server
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+

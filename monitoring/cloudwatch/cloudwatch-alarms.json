@@ -1,0 +1,87 @@
+{
+  "Alarms": [
+    {
+      "AlarmName": "CloudPulse-HighCPUUtilizationAlarm",
+      "AlarmDescription": "Triggers when CloudPulse container CPU utilization exceeds 80% for 2 consecutive 60-second evaluation periods",
+      "ActionsEnabled": true,
+      "OKActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "AlarmActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "InsufficientDataActions": [],
+      "MetricName": "node_cpu_utilization",
+      "Namespace": "ContainerInsights",
+      "Statistic": "Average",
+      "Dimensions": [
+        { "Name": "ClusterName", "Value": "cloudpulse-eks-cluster" },
+        { "Name": "Namespace", "Value": "cloudpulse" },
+        { "Name": "PodName", "Value": "cloudpulse-api" }
+      ],
+      "Period": 60,
+      "EvaluationPeriods": 2,
+      "DatapointsToAlarm": 2,
+      "Threshold": 80.0,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "CloudPulse-High5xxErrorRateAlarm",
+      "AlarmDescription": "Triggers when application returns more than five 5xx HTTP errors within a 5-minute period",
+      "ActionsEnabled": true,
+      "OKActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "AlarmActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "InsufficientDataActions": [],
+      "MetricName": "HTTPCode_Target_5XX_Count",
+      "Namespace": "AWS/ApplicationELB",
+      "Statistic": "Sum",
+      "Dimensions": [
+        { "Name": "LoadBalancer", "Value": "app/cloudpulse-alb/abcdef1234567890" },
+        { "Name": "TargetGroup", "Value": "targetgroup/cloudpulse-tg/1234567890abcdef" }
+      ],
+      "Period": 300,
+      "EvaluationPeriods": 1,
+      "Threshold": 5.0,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "CloudPulse-UnhealthyHostCountAlarm",
+      "AlarmDescription": "Triggers when Application Load Balancer health check detects one or more unhealthy CloudPulse targets",
+      "ActionsEnabled": true,
+      "OKActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "AlarmActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "InsufficientDataActions": [],
+      "MetricName": "UnHealthyHostCount",
+      "Namespace": "AWS/ApplicationELB",
+      "Statistic": "Maximum",
+      "Dimensions": [
+        { "Name": "LoadBalancer", "Value": "app/cloudpulse-alb/abcdef1234567890" },
+        { "Name": "TargetGroup", "Value": "targetgroup/cloudpulse-tg/1234567890abcdef" }
+      ],
+      "Period": 60,
+      "EvaluationPeriods": 2,
+      "Threshold": 1.0,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "breaching"
+    },
+    {
+      "AlarmName": "CloudPulse-PodCrashLoopRestartAlarm",
+      "AlarmDescription": "Triggers when pod restart count in namespace cloudpulse exceeds 2 within 15 minutes",
+      "ActionsEnabled": true,
+      "OKActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "AlarmActions": ["arn:aws:sns:us-east-1:123456789012:cloudpulse-devops-alerts"],
+      "InsufficientDataActions": [],
+      "MetricName": "pod_number_of_container_restarts",
+      "Namespace": "ContainerInsights",
+      "Statistic": "Sum",
+      "Dimensions": [
+        { "Name": "ClusterName", "Value": "cloudpulse-eks-cluster" },
+        { "Name": "Namespace", "Value": "cloudpulse" }
+      ],
+      "Period": 300,
+      "EvaluationPeriods": 3,
+      "Threshold": 2.0,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "TreatMissingData": "notBreaching"
+    }
+  ]
+}
+

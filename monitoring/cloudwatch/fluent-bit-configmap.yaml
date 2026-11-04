@@ -1,0 +1,58 @@
+# ==============================================================================
+# AWS for Fluent Bit ConfigMap for CloudPulse EKS Pod Log Shipping
+# Ships JSON structured logs with correlation IDs directly to AWS CloudWatch Logs
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-cloudpulse-config
+  namespace: amazon-cloudwatch
+  labels:
+    k8s-app: fluent-bit
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         1
+        Log_Level     info
+        Daemon        off
+        Parsers_File  parsers.conf
+
+    [INPUT]
+        Name              tail
+        Tag               kube.cloudpulse.*
+        Path              /var/log/containers/cloudpulse-api*.log
+        Parser            docker
+        DB                /var/log/flb_cloudpulse.db
+        Mem_Buf_Limit     50MB
+        Skip_Long_Lines   On
+        Refresh_Interval  10
+
+    [FILTER]
+        Name                kubernetes
+        Match               kube.cloudpulse.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     kube.cloudpulse.
+        Merge_Log           On
+        Merge_Log_Key       log_processed
+        Keep_Log            Off
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude Off
+
+    [OUTPUT]
+        Name                cloudwatch_logs
+        Match               kube.cloudpulse.*
+        region              us-east-1
+        log_group_name      /aws/eks/cloudpulse/application
+        log_stream_prefix   pod-
+        auto_create_group   true
+
+  parsers.conf: |
+    [PARSER]
+        Name        docker
+        Format      json
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+        Time_Keep   On
+

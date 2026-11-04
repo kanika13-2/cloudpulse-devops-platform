@@ -1,0 +1,23 @@
+# ==============================================================================
+# CloudPulse Service Manifest
+# Exposes the application internally within cluster (ClusterIP)
+# ==============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudpulse-service
+  namespace: cloudpulse
+  labels:
+    app.kubernetes.io/name: cloudpulse-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: cloudpulse-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: cloudpulse-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+

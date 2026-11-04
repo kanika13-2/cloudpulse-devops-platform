@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Python cache & virtual environments
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env
+
+# Testing and linting
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+pytest.ini
+
+# Documentation & Markdown
+*.md
+docs/
+
+# CI/CD and deployment scripts
+.github/
+scripts/
+k8s/
+monitoring/
+
+# IDE configs
+.vscode/
+.idea/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+

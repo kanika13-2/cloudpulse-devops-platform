@@ -1,0 +1,18 @@
+# ==============================================================================
+# CloudPulse Pod Disruption Budget (PDB)
+# Ensures at least 1 replica is always online during node draining or EKS upgrades
+# ==============================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cloudpulse-pdb
+  namespace: cloudpulse
+  labels:
+    app.kubernetes.io/name: cloudpulse-api
+    app.kubernetes.io/part-of: cloudpulse-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudpulse-api
+

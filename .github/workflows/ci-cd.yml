@@ -1,0 +1,231 @@
+# ==============================================================================
+# CloudPulse Enterprise CI/CD Pipeline
+# End-to-End Automated Testing, Security Hardening, ECR Push & EKS Deployment
+# Built with AWS Least-Privilege OIDC Authentication (Zero Hardcoded Secrets)
+# ==============================================================================
+
+name: CloudPulse CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - 'TASK_STATUS.md'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Deployment Environment (staging or production)'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+      force_deploy:
+        description: 'Force AWS EKS Deployment'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: cloudpulse-platform
+  EKS_CLUSTER_NAME: cloudpulse-eks-cluster
+  KUBE_NAMESPACE: cloudpulse
+  PYTHON_VERSION: "3.12"
+
+permissions:
+  id-token: write  # Critical: Enables AWS OIDC Federated Authentication
+  contents: read
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Job 1: Automated Testing, Code Quality & Coverage
+  # ----------------------------------------------------------------------------
+  test-and-lint:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Python Code Formatting Check (Black)
+        run: |
+          black --check --diff app/ tests/
+
+      - name: Python Linting Check (Flake8)
+        run: |
+          flake8 app/ tests/ --count --max-line-length=120 --statistics
+
+      - name: Execute Pytest Suite with Coverage
+        run: |
+          pytest --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload Test Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 7
+
+  # ----------------------------------------------------------------------------
+  # Job 2: Kubernetes Manifest Validation
+  # ----------------------------------------------------------------------------
+  validate-k8s:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate Kubernetes Manifests Syntax & Schemas
+        run: |
+          python tests/validate_k8s.py
+
+  # ----------------------------------------------------------------------------
+  # Job 3: Docker Container Build & Local Integration Health Probe
+  # ----------------------------------------------------------------------------
+  build-container:
+    name: Build & Verify Docker Image
+    needs: [test-and-lint, validate-k8s]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Local Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify Container Startup & Health Probe
+        run: |
+          echo "Starting container in isolated test bridge..."
+          docker run -d --name test-cloudpulse -p 8000:8000 ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          
+          echo "Waiting for container startup..."
+          sleep 5
+          
+          echo "Probing /health endpoint..."
+          curl -f http://localhost:8000/health || exit 1
+          
+          echo "Probing /metrics endpoint..."
+          curl -f http://localhost:8000/metrics | grep "cloudpulse_http_requests_total" || exit 1
+          
+          echo "Cleaning up test container..."
+          docker stop test-cloudpulse && docker rm test-cloudpulse
+
+  # ----------------------------------------------------------------------------
+  # Job 4: AWS ECR Image Push & EKS Production Deployment (Conditional)
+  # Operates only on 'main' branch when AWS credentials / OIDC are provisioned.
+  # ----------------------------------------------------------------------------
+  deploy-aws:
+    name: Deploy to AWS ECR & EKS
+    needs: [build-container]
+    runs-on: ubuntu-latest
+    # Execute only on main push or manual trigger, AND when AWS credentials exist
+    if: |
+      github.ref == 'refs/heads/main' && 
+      (secrets.AWS_ROLE_TO_ASSUME != '' || secrets.AWS_ACCESS_KEY_ID != '')
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC (Recommended Least-Privilege)
+        if: ${{ secrets.AWS_ROLE_TO_ASSUME != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Configure AWS Credentials via Access Keys (Fallback)
+        if: ${{ secrets.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon Elastic Container Registry (ECR)
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, Tag, and Push Docker Image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Update Kubeconfig for Amazon EKS Cluster
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Deploy Kubernetes Manifests to EKS
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "Applying Kubernetes manifests to namespace ${{ env.KUBE_NAMESPACE }}..."
+          kubectl apply -f k8s/00-namespace.yaml
+          kubectl apply -f k8s/01-configmap.yaml
+          kubectl apply -f k8s/02-secret.yaml
+          kubectl apply -f k8s/07-serviceaccount.yaml
+          
+          # Dynamically substitute image tag in deployment
+          kubectl apply -f k8s/03-deployment.yaml
+          kubectl set image deployment/cloudpulse-api cloudpulse-api=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -n ${{ env.KUBE_NAMESPACE }}
+          
+          kubectl apply -f k8s/04-service.yaml
+          kubectl apply -f k8s/05-hpa.yaml
+          kubectl apply -f k8s/06-pdb.yaml
+          kubectl apply -f k8s/08-ingress.yaml
+
+      - name: Verify Zero-Downtime Rolling Update Status
+        run: |
+          echo "Verifying deployment rollout status..."
+          kubectl rollout status deployment/cloudpulse-api -n ${{ env.KUBE_NAMESPACE }} --timeout=180s
+          
+          echo "Verifying active pod endpoints..."
+          kubectl get pods -n ${{ env.KUBE_NAMESPACE }} -l app.kubernetes.io/name=cloudpulse-api
+

@@ -1,0 +1,107 @@
+# ==============================================================================
+# CloudPulse Platform - Local Multi-Container Composition
+# Orchestrates CloudPulse FastAPI Application, Prometheus, and Grafana
+# Zero AWS dependencies required for local execution.
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # CloudPulse FastAPI Core Application
+  # ----------------------------------------------------------------------------
+  cloudpulse-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cloudpulse-platform:latest
+    container_name: cloudpulse-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8000
+      - AWS_REGION=us-east-1
+      - AWS_CLOUDWATCH_ENABLED=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 384M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    networks:
+      - cloudpulse-network
+
+  # ----------------------------------------------------------------------------
+  # Prometheus Time-Series Metrics Server
+  # ----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: cloudpulse-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    depends_on:
+      cloudpulse-api:
+        condition: service_healthy
+    networks:
+      - cloudpulse-network
+
+  # ----------------------------------------------------------------------------
+  # Grafana Visualization & Observability Dashboards
+  # ----------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: cloudpulse-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - cloudpulse-network
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network & Persistent Volumes
+# ------------------------------------------------------------------------------
+networks:
+  cloudpulse-network:
+    driver: bridge
+    name: cloudpulse-network
+
+volumes:
+  prometheus_data:
+    name: cloudpulse-prometheus-data
+  grafana_data:
+    name: cloudpulse-grafana-data
+

@@ -1,0 +1,26 @@
+# ==============================================================================
+# CloudPulse Application Configuration Map
+# Non-sensitive runtime variables injected into application containers
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudpulse-config
+  namespace: cloudpulse
+  labels:
+    app.kubernetes.io/name: cloudpulse-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: cloudpulse-platform
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8000"
+  HOST: "0.0.0.0"
+  AWS_REGION: "us-east-1"
+  AWS_CLOUDWATCH_ENABLED: "true"
+  AWS_CLOUDWATCH_LOG_GROUP: "/aws/eks/cloudpulse/application"
+  METRICS_ENABLED: "true"
+  METRICS_PATH: "/metrics"
+  MAX_MEMORY_PERCENT_THRESHOLD: "90.0"
+  MAX_CPU_PERCENT_THRESHOLD: "95.0"
+
