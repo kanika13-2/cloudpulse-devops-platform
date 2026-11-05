@@ -20,4 +20,3 @@ def test_system_info_endpoint(client):
     assert "total_memory_mb" in data
     assert data["total_memory_mb"] > 0
     assert "aws_region" in data
-

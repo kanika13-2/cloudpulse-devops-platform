@@ -11,28 +11,22 @@ from prometheus_client import (
     Histogram,
     Gauge,
     Info,
-    CollectorRegistry,
     generate_latest,
-    CONTENT_TYPE_LATEST,
-    REGISTRY
+    REGISTRY,
 )
 
 # Application startup timestamp
 START_TIME = time.time()
 
 # --- Application Info Metric ---
-APP_INFO = Info(
-    "cloudpulse_app",
-    "Application metadata information",
-    registry=REGISTRY
-)
+APP_INFO = Info("cloudpulse_app", "Application metadata information", registry=REGISTRY)
 
 # --- HTTP Request Metrics ---
 HTTP_REQUESTS_TOTAL = Counter(
     "cloudpulse_http_requests_total",
     "Total count of HTTP requests processed by CloudPulse",
     ["method", "endpoint", "status"],
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 HTTP_REQUEST_DURATION_SECONDS = Histogram(
@@ -40,46 +34,46 @@ HTTP_REQUEST_DURATION_SECONDS = Histogram(
     "HTTP request latency in seconds",
     ["method", "endpoint"],
     buckets=(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0),
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 HTTP_REQUESTS_IN_PROGRESS = Gauge(
     "cloudpulse_http_requests_in_progress",
     "Number of HTTP requests currently being processed",
     ["method", "endpoint"],
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 # --- System & Health Metrics ---
 APP_UPTIME_SECONDS = Gauge(
     "cloudpulse_app_uptime_seconds",
     "Number of seconds the application has been running",
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 SYSTEM_CPU_PERCENT = Gauge(
     "cloudpulse_cpu_usage_percent",
     "Current process CPU utilization percentage",
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 SYSTEM_MEMORY_BYTES = Gauge(
     "cloudpulse_memory_usage_bytes",
     "Resident Set Size (RSS) memory in bytes",
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 SYSTEM_MEMORY_PERCENT = Gauge(
     "cloudpulse_memory_usage_percent",
     "System memory utilization percentage",
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 SIMULATED_ERRORS_TOTAL = Counter(
     "cloudpulse_simulated_errors_total",
     "Total count of simulated errors generated for alerting validation",
     ["error_type"],
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 
@@ -101,4 +95,3 @@ def get_latest_metrics() -> bytes:
     """Refresh system gauges and return rendered Prometheus metric exposition payload."""
     update_system_metrics()
     return generate_latest(REGISTRY)
-

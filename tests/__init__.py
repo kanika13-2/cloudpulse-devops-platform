@@ -1,2 +1,1 @@
 """CloudPulse Automated Test Suite."""
-

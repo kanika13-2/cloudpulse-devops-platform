@@ -13,13 +13,9 @@ router = APIRouter(tags=["Observability & Metrics"])
 @router.get(
     "/metrics",
     summary="Prometheus Metrics Exposition",
-    description="Endpoint scraped by Prometheus or AWS CloudWatch Prometheus agent."
+    description="Endpoint scraped by Prometheus or AWS CloudWatch Prometheus agent.",
 )
 def get_metrics():
     """Generates latest application and system Prometheus metrics."""
     metrics_data = get_latest_metrics()
-    return Response(
-        content=metrics_data,
-        media_type=CONTENT_TYPE_LATEST
-    )
-
+    return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)

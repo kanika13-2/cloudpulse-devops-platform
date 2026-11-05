@@ -18,7 +18,7 @@ from app.metrics import (
     APP_INFO,
     HTTP_REQUESTS_TOTAL,
     HTTP_REQUEST_DURATION_SECONDS,
-    HTTP_REQUESTS_IN_PROGRESS
+    HTTP_REQUESTS_IN_PROGRESS,
 )
 from app.routers import health, metrics, system, simulation
 
@@ -26,7 +26,7 @@ settings = get_settings()
 logger = setup_logger(
     name="cloudpulse-api",
     log_level=settings.LOG_LEVEL,
-    environment=settings.ENVIRONMENT
+    environment=settings.ENVIRONMENT,
 )
 
 
@@ -34,12 +34,14 @@ logger = setup_logger(
 async def lifespan(app: FastAPI):
     """Application lifespan events (startup & graceful shutdown)."""
     # Startup: register app info metric
-    APP_INFO.info({
-        "version": settings.APP_VERSION,
-        "environment": settings.ENVIRONMENT,
-        "service": settings.APP_NAME,
-        "region": settings.AWS_REGION
-    })
+    APP_INFO.info(
+        {
+            "version": settings.APP_VERSION,
+            "environment": settings.ENVIRONMENT,
+            "service": settings.APP_NAME,
+            "region": settings.AWS_REGION,
+        }
+    )
     logger.info(
         f"CloudPulse Platform starting up - version={settings.APP_VERSION}, "
         f"env={settings.ENVIRONMENT}, region={settings.AWS_REGION}"
@@ -56,7 +58,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # Enable CORS for frontend/dashboard cross-origin queries
@@ -94,16 +96,15 @@ async def observability_and_correlation_middleware(request: Request, call_next):
         status_code = response.status_code
     except Exception as exc:
         logger.error(
-            f"Unhandled exception during {method} {endpoint}: {str(exc)}",
-            exc_info=True
+            f"Unhandled exception during {method} {endpoint}: {str(exc)}", exc_info=True
         )
         response = JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "error": "InternalServerError",
                 "message": "An unexpected error occurred",
-                "correlation_id": correlation_id
-            }
+                "correlation_id": correlation_id,
+            },
         )
         status_code = response.status_code
     finally:
@@ -112,15 +113,12 @@ async def observability_and_correlation_middleware(request: Request, call_next):
 
         # Update metrics
         HTTP_REQUESTS_TOTAL.labels(
-            method=method,
-            endpoint=endpoint,
-            status=str(status_code)
+            method=method, endpoint=endpoint, status=str(status_code)
         ).inc()
 
-        HTTP_REQUEST_DURATION_SECONDS.labels(
-            method=method,
-            endpoint=endpoint
-        ).observe(duration)
+        HTTP_REQUEST_DURATION_SECONDS.labels(method=method, endpoint=endpoint).observe(
+            duration
+        )
 
         # Attach Correlation ID to response
         response.headers["X-Correlation-ID"] = correlation_id
@@ -135,9 +133,9 @@ async def observability_and_correlation_middleware(request: Request, call_next):
                     "endpoint": endpoint,
                     "status_code": status_code,
                     "duration_ms": round(duration * 1000, 2),
-                    "client_ip": request.client.host if request.client else "unknown"
+                    "client_ip": request.client.host if request.client else "unknown",
                 }
-            }
+            },
         )
 
     return response
@@ -149,7 +147,7 @@ async def observability_and_correlation_middleware(request: Request, call_next):
     response_model=RootResponse,
     tags=["Root"],
     summary="Application Root & Discovery",
-    description="Returns platform overview, health check URL, and observability endpoints."
+    description="Returns platform overview, health check URL, and observability endpoints.",
 )
 def root():
     """Root landing endpoint with system discovery metadata."""
@@ -161,7 +159,7 @@ def root():
         status="healthy",
         docs_url="/docs",
         health_url="/health",
-        metrics_url="/metrics"
+        metrics_url="/metrics",
     )
 
 
@@ -174,5 +172,7 @@ app.include_router(simulation.router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
 
+    uvicorn.run(
+        "app.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG
+    )

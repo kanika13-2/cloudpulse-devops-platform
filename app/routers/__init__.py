@@ -1,2 +1,1 @@
 """CloudPulse API Routers."""
-

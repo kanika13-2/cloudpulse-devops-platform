@@ -16,7 +16,7 @@ def get_test_settings() -> Settings:
         DEBUG=True,
         LOG_LEVEL="DEBUG",
         AWS_REGION="us-east-1",
-        AWS_CLOUDWATCH_ENABLED=False
+        AWS_CLOUDWATCH_ENABLED=False,
     )
 
 
@@ -27,4 +27,3 @@ def client():
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
-

@@ -27,8 +27,6 @@ def test_metrics_endpoint_response(client):
 @pytest.mark.unit
 def test_metrics_counter_increments(client):
     """Verify HTTP request counter tracks and increments with endpoint calls."""
-    # Query metrics before
-    before = client.get("/metrics").text
 
     # Hit root twice
     client.get("/")
@@ -37,4 +35,3 @@ def test_metrics_counter_increments(client):
     # Query metrics after
     after = client.get("/metrics").text
     assert "cloudpulse_http_requests_total" in after
-

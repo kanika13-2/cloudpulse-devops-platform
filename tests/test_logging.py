@@ -4,7 +4,11 @@ Tests for Structured Logging and Correlation ID tracking.
 
 import json
 import logging
-from app.logger import JSONFormatter, StandardFormatter, get_correlation_id, correlation_id_ctx
+from app.logger import (
+    JSONFormatter,
+    StandardFormatter,
+    correlation_id_ctx,
+)
 
 
 def test_json_formatter():
@@ -17,7 +21,7 @@ def test_json_formatter():
         lineno=42,
         msg="Test log message",
         args=(),
-        exc_info=None
+        exc_info=None,
     )
     output = formatter.format(record)
     parsed = json.loads(output)
@@ -42,7 +46,7 @@ def test_standard_formatter():
             lineno=10,
             msg="Console warning message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         output = formatter.format(record)
         assert "WARNING" in output
@@ -50,4 +54,3 @@ def test_standard_formatter():
         assert "[abcdef12]" in output
     finally:
         correlation_id_ctx.reset(token)
-

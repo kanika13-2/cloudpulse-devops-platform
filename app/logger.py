@@ -28,7 +28,9 @@ def get_correlation_id() -> str:
 class JSONFormatter(logging.Formatter):
     """Formats log records as single-line JSON objects for CloudWatch & Fluent Bit ingestion."""
 
-    def __init__(self, service_name: str = "cloudpulse-api", environment: str = "development"):
+    def __init__(
+        self, service_name: str = "cloudpulse-api", environment: str = "development"
+    ):
         super().__init__()
         self.service_name = service_name
         self.environment = environment
@@ -68,7 +70,9 @@ class StandardFormatter(logging.Formatter):
         return f"{timestamp} | {record.levelname:<8} | {cid_str} | {record.name} - {record.getMessage()}"
 
 
-def setup_logger(name: str = "cloudpulse", log_level: str = "INFO", environment: str = "development") -> logging.Logger:
+def setup_logger(
+    name: str = "cloudpulse", log_level: str = "INFO", environment: str = "development"
+) -> logging.Logger:
     """Configure and return an enterprise-ready logger."""
     logger = logging.getLogger(name)
     logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
@@ -80,11 +84,12 @@ def setup_logger(name: str = "cloudpulse", log_level: str = "INFO", environment:
     handler = logging.StreamHandler(sys.stdout)
 
     if environment.lower() in ("production", "staging", "cloudwatch"):
-        handler.setFormatter(JSONFormatter(service_name="cloudpulse-api", environment=environment))
+        handler.setFormatter(
+            JSONFormatter(service_name="cloudpulse-api", environment=environment)
+        )
     else:
         handler.setFormatter(StandardFormatter())
 
     logger.addHandler(handler)
     logger.propagate = False
     return logger
-

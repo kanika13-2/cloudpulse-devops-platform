@@ -29,15 +29,15 @@ def get_disk_usage_percent() -> float:
     "/health",
     response_model=HealthResponse,
     summary="Application Health Probe",
-    description="Endpoint for Kubernetes liveness & readiness probes and AWS Target Group health checks."
+    description="Endpoint for Kubernetes liveness & readiness probes and AWS Target Group health checks.",
 )
 def get_health(
     response: Response,
     probe_type: str = Query(
         "all",
         pattern="^(all|liveness|readiness)$",
-        description="Optional filter for specific probe checks: all, liveness, readiness"
-    )
+        description="Optional filter for specific probe checks: all, liveness, readiness",
+    ),
 ):
     """
     Evaluates system vitals (CPU, memory, disk).
@@ -85,6 +85,6 @@ def get_health(
             memory_status="healthy" if mem_healthy else "exhausted",
             memory_percent=round(mem_pct, 2),
             process_memory_mb=round(proc_mem, 2),
-            disk_status="healthy" if disk_healthy else "full"
-        )
+            disk_status="healthy" if disk_healthy else "full",
+        ),
     )

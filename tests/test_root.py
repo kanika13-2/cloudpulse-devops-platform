@@ -27,4 +27,3 @@ def test_custom_correlation_id_propagation(client):
     response = client.get("/", headers={"X-Correlation-ID": custom_cid})
     assert response.status_code == 200
     assert response.headers.get("X-Correlation-ID") == custom_cid
-

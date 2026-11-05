@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/v1/system", tags=["System Diagnostics"])
     "/info",
     response_model=SystemInfoResponse,
     summary="Host & Runtime Details",
-    description="Inspect host system topology, OS, CPU cores, memory limits, and AWS Region."
+    description="Inspect host system topology, OS, CPU cores, memory limits, and AWS Region.",
 )
 def get_system_info():
     """Returns runtime host metrics for container/node verification in EKS."""
@@ -33,6 +33,5 @@ def get_system_info():
         cpu_count_physical=psutil.cpu_count(logical=False),
         total_memory_mb=round(vm.total / (1024 * 1024), 2),
         available_memory_mb=round(vm.available / (1024 * 1024), 2),
-        aws_region=settings.AWS_REGION
+        aws_region=settings.AWS_REGION,
     )
-

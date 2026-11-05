@@ -7,6 +7,7 @@ import glob
 import sys
 import yaml
 
+
 def validate_manifests():
     files = sorted(glob.glob("k8s/*.yaml"))
     if not files:
@@ -30,6 +31,6 @@ def validate_manifests():
 
     print("\nSUCCESS: All Kubernetes manifests passed schema validation!")
 
+
 if __name__ == "__main__":
     validate_manifests()
-
