@@ -80,3 +80,8 @@ secrets.yaml
 credentials.json
 service-account*.json
 .aws/
+
+
+# AWS deployment configuration - keep account-specific files private
+cloudpulse-deploy-policy.json
+github-oidc-trust.json
